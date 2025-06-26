@@ -1,6 +1,5 @@
-# mentor_agent/models/user_setup.py
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 class UserSetup(BaseModel):
     user_id: str = Field(..., example="user123")
@@ -10,3 +9,8 @@ class UserSetup(BaseModel):
     strengths: Optional[List[str]] = Field(default=[], example=["DSA", "Python"])
     weaknesses: Optional[List[str]] = Field(default=[], example=["Communication"])
     mentor_type: Optional[str] = Field(default="Tech Mentor", example="Tech Mentor")
+    personality: Optional[Literal["Concise", "Professional", "Friendly", "Challenger", "Cheerful", "Empathetic"]] = Field(
+        default="Concise",
+        description="Defines the communication style of the mentor.",
+        example="Friendly"
+    )

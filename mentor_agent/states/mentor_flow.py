@@ -1,81 +1,72 @@
-from langgraph.graph import StateGraph, END
-from pydantic import BaseModel
+from langgraph.graph import StateGraph
 from langchain_core.runnables import RunnableLambda
-from typing import List, Optional
-import datetime
-import json
+from mentor_agent.agents.groq_agent import GroqMentorAgent
+from mentor_agent.memory.store import get_user_memory, update_user_memory
+from mentor_agent.models.conversation_state import MentorState
 import os
 
-MEMORY_PATH = "mentor_agent/memory/user_memory.json"
+groq_agent = GroqMentorAgent(groq_api_key=os.getenv("GROQ_API_KEY"))
 
-def load_user_state(input):
-    user_id = input.get("user_id")
-    if os.path.exists(MEMORY_PATH):
-        with open(MEMORY_PATH, "r") as f:
-            data = json.load(f)
-            return data.get(user_id, {"tasks": [], "history": [], "documents": []})
-    return {"tasks": [], "history": [], "documents": []}
+def analyze_and_respond(state: MentorState):
+    user_id = state.user_id
+    user_input = state.input
 
-def analyze_input(state):
-    input_text = state.get("input")
-    if "done" in input_text.lower():
-        return {**state, "action": "check_task"}
-    elif "today" in input_text.lower() or "learned" in input_text.lower():
-        return {**state, "action": "log_learning"}
-    else:
-        return {**state, "action": "assign_task"}
+    memory = get_user_memory(user_id)
+    profile = memory.get("profile", {})
+    tasks = memory.get("tasks", [])
+    history = memory.get("history", [])
+    docs = memory.get("documents", [])
 
-def mentor_response(state):
-    action = state.get("action")
-    if action == "assign_task":
-        task = f"Study data structures on {datetime.date.today()}"
-        state["tasks"].append({"task": task, "status": "assigned"})
-        reply = f"I want you to complete this task: {task}"
-    elif action == "check_task":
-        reply = f"Great! I'll mark your last task as complete."
-        if state["tasks"]:
-            state["tasks"][-1]["status"] = "done"
-    elif action == "log_learning":
-        reply = "Thanks for sharing what you learned today. I’ll build on that tomorrow."
-    else:
-        reply = "Let’s keep pushing!"
-    state["reply"] = reply
-    return state
+    prompt = f"""
+You are an AI mentor with a {profile.get("personality", "Concise")} personality.
 
-def save_user_state(state):
-    user_id = state.get("user_id")
-    if not user_id:
-        return state
-    if os.path.exists(MEMORY_PATH):
-        with open(MEMORY_PATH, "r") as f:
-            all_data = json.load(f)
-    else:
-        all_data = {}
-    all_data[user_id] = state
-    with open(MEMORY_PATH, "w") as f:
-        json.dump(all_data, f, indent=2)
-    return state
+### User Profile
+Name: {profile.get('name')}
+Goal: {profile.get('goal')}
+Education: {profile.get('education')}
 
-class MentorInput(BaseModel):
-    input: str
-    user_id: str
-    tasks: Optional[List[dict]] = []
-    history: Optional[List[dict]] = []
-    documents: Optional[List[dict]] = []
-    reply: Optional[str] = None
-    action: Optional[str] = None
+### Recent Messages
+{', '.join(x['input'] for x in history[-3:])}
 
-builder = StateGraph(MentorInput)
+### Tasks
+{', '.join(t['task'] for t in tasks[-3:])}
 
-builder.add_node("load", RunnableLambda(load_user_state))
-builder.add_node("analyze", RunnableLambda(analyze_input))
-builder.add_node("respond", RunnableLambda(mentor_response))
-builder.add_node("save", RunnableLambda(save_user_state))
+### Docs
+{', '.join(d['filename'] for d in docs)}
 
-builder.set_entry_point("load")
-builder.add_edge("load", "analyze")
-builder.add_edge("analyze", "respond")
-builder.add_edge("respond", "save")
-builder.add_edge("save", END)
+Respond in **markdown format**. Include:
+- Response to user's message: "{user_input}"
+- Embedded follow-up relevant to their goals or past work
+- Add a summary sentiment + topic
+
+Format output as:
+RESPONSE:
+<markdown>
+
+SENTIMENT: <positive/neutral/negative>
+TOPIC: <detected topic>
+"""
+
+    result = groq_agent.run(prompt)
+    reply = result.get("output", "No reply generated")
+
+    memory.setdefault("history", []).append({
+        "input": user_input,
+        "response": reply
+    })
+    update_user_memory(user_id, memory)
+
+    return {
+        "reply": reply,
+        "analytics": {
+            "sentiment": result.get("sentiment", "neutral"),
+            "topic": result.get("topic", "general")
+        }
+    }
+
+# ✅ Register with schema
+builder = StateGraph(state_schema=MentorState)
+builder.add_node("respond", RunnableLambda(analyze_and_respond))
+builder.set_entry_point("respond")
 
 mentor_graph = builder.compile()
