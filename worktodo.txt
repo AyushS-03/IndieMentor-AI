@@ -1,0 +1,8 @@
+
+Conversation Memory storage in mongo
+PDF Handbook
+Audio + Video Integration (Eleven Labs and Tavus)
+APK Development(Expo)
+Heimdall Dashboard
+Pricing Integration
+Payment Authentication
