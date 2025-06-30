@@ -132,7 +132,7 @@ const CreateMentorPage: React.FC = () => {
       isBot,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages((prev: Message[]) => [...prev, newMessage]);
   };
 
   const simulateTyping = (callback: () => void, delay: number = 1000) => {
