@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from mentor_agent.routes.setup import setup_router
 from mentor_agent.routes.chat import chat_router
-from mentor_agent.routes.auth import auth_router
+from mentor_agent.routes.auth import router as auth_router
 from dotenv import load_dotenv
 import os
 
