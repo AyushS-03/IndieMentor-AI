@@ -1,0 +1,31 @@
+{
+  "string": {
+    "profile": {
+      "user_id": "string",
+      "name": "string",
+      "education": "string",
+      "goal": "string",
+      "strengths": [
+        ""
+      ],
+      "weaknesses": [
+        ""
+      ],
+      "mentor_type": "Tech Mentor",
+      "personality": "Concise"
+    },
+    "tasks": [],
+    "history": [
+      {
+        "input": "Hello",
+        "response": "**RESPONSE:**\nHello! I'm thrilled to assist you. As your AI mentor, I'd like to recall our previous conversations and your goals. You mentioned your name is [Name], and your goal is [Goal]. You also mentioned your education background is [Education].\n\nAs we begin this new conversation, I'd like to ask: What brings you here today? Are there any specific challenges or questions you'd like to discuss?\n\n**SENTIMENT:** Neutral\n**TOPIC:** Goal-oriented conversation"
+      },
+      {
+        "input": "Hello",
+        "response": "**RESPONSE:**\nHello! It's great to connect with you. I noticed that you haven't mentioned your name, goal, or education yet. Could you please share that with me so I can better understand your needs and provide more personalized guidance?\n\n**SENTIMENT:** neutral\n**TOPIC:** introduction, goal-setting"
+      }
+    ],
+    "documents": [],
+    "last_check": null
+  }
+}
