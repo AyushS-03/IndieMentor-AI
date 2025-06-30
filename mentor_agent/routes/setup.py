@@ -1,7 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Body, Form, UploadFile, File
+from fastapi import APIRouter, Body, Form, UploadFile, File, Depends
 from mentor_agent.models.user_setup import UserSetup
 from mentor_agent.memory.store import get_user_memory, update_user_memory
+from mentor_agent.routes.auth import authenticate_user_basic
 import os
 import fitz  # PyMuPDF
 import docx
@@ -24,19 +25,21 @@ def extract_text_from_docx(file_path):
 @setup_router.post(
     "/",
     summary="Setup a new mentor bot",
-    description="Provide user profile and optionally upload a DOCX/PDF to include in memory."
+    description="Provide user profile and optionally upload a DOCX/PDF to include in memory. Requires Basic Authentication (username: email, password: your password)."
 )
 async def setup_user(
-    user_id: str = Form(...),
-    name: str = Form(...),
     education: str = Form(...),
     goal: str = Form(...),
     strengths: Optional[List[str]] = Form(default=[]),
     weaknesses: Optional[List[str]] = Form(default=[]),
     mentor_type: Optional[str] = Form(default="Tech Mentor"),
     personality: Optional[str] = Form(default="Concise"),
-    file: Optional[UploadFile] = File(None)
+    file: Optional[UploadFile] = File(None),
+    current_user = Depends(authenticate_user_basic)
 ):
+    # Extract user_id and name from authenticated user
+    user_id = current_user['supabase_user_id']  # Use supabase_user_id as unique identifier
+    name = current_user['full_name']
 
     user_data = UserSetup(
         user_id=user_id,
@@ -48,7 +51,6 @@ async def setup_user(
         mentor_type=mentor_type,
         personality=personality
     )
-
 
     document_text = ""
     filename = None
@@ -69,9 +71,23 @@ async def setup_user(
         "tasks": [],
         "history": [],
         "documents": [{"filename": filename, "content": document_text}] if file else [],
-        "last_check": None
+        "last_check": None,
+        "user_info": {
+            "email": current_user['email'],
+            "supabase_user_id": current_user['supabase_user_id'],
+            "session_id": current_user.get('session_id'),
+            "created_at": current_user.get('created_at'),
+            "last_setup": current_user.get('last_login')
+        }
     }
 
     update_user_memory(user_data.user_id, memory)
-    return {"message": "Mentor bot created.", "user_id": user_data.user_id}
+
+    return {
+        "message": "Mentor bot created successfully.",
+        "user_id": user_data.user_id,
+        "supabase_user_id": current_user['supabase_user_id'],
+        "email": current_user['email'],
+        "name": name
+    }
 
