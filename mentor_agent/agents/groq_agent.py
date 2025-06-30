@@ -6,8 +6,6 @@ from dotenv import load_dotenv, find_dotenv
 
 # Automatically find and load .env files
 load_dotenv(find_dotenv())
-load_dotenv(find_dotenv(".env.local"))
-
 
 class GroqMentorAgent:
     def __init__(self, groq_api_key: str = None, model: str = "llama3-8b-8192"):
